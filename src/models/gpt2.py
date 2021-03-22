@@ -174,7 +174,7 @@ def small_transformer(
     n_heads: int,
     n_classes: Optional[int] = None,
     generative: bool = False,
-    from_lm: bool = False,
+    from_lm: str = None,
 ):
     """Returns a small transformer with the same architecture as GPT-2 but
     different hyper-parameters.
@@ -199,9 +199,7 @@ def small_transformer(
         model = GPT2ClassConditional(config, n_classes, generative=True)
     # Initialize from LM
     if from_lm is not None:
-        lm_state_dict = th.load(
-            "pretrained_models/WikiText103_small_transformer_lm_model.pt"
-        )
+        lm_state_dict = th.load(from_lm)
         model.load_lm_state_dict(lm_state_dict)
     # Tie embeddings
     model.get_output_embeddings().weight = model.get_input_embeddings().weight

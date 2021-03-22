@@ -57,7 +57,7 @@ python pdro_main.py \
 Note the parameters relevant to P-DRO:
 
 - `--pdro`: use P-DRO (deactivate this for ERM)
-- `--adv-architecture small_transformer_generative_wikitext103`: architecture for the adversary. You can find more architectures in `src/models/architectures.py`.
+- `--adv-architecture small_transformer_generative`: architecture for the adversary. You can find more architectures in `src/models/architectures.py`.
 - `--filter-advs-by reverse_kl`: filter validation adversary by reverse KL
 - `--adv-threshold 2.302585`: reject adversaries with reverse KL to the data distribution > `log(10)` on the dev set
 - `--adv-optimizer sgd`: train the adversary with regular SGD

@@ -40,7 +40,7 @@ python pdro_main.py \
     --eval-on-domains biased=True,label=0 biased=True,label=1 biased=False,label=0 biased=False,label=1 \
     --pdro \
     --adv-architecture small_transformer_generative_wikitext103 \
-    --adv-filename results/biased_SST_95_gen_LM_small_transformer_generative_wikitext103_model.pt \
+    --adv-filename pretrained_models/biased_SST_95_gen_LM_small_transformer_generative_wikitext103_model.pt \
     --filter-advs-by reverse_kl \
     --adv-threshold 2.302585 \
     --adv-optimizer sgd  \

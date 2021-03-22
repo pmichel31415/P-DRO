@@ -1,6 +1,8 @@
 # Parametric Distributionally Robust Optimization
 
-This repository contains code for implementing experiments in the ICLR 2021 paper "Modeling the Second Player in Distributionally Robust Optimization".
+This repository contains code for implementing experiments in the ICLR 2021 paper ["Modeling the Second Player in Distributionally Robust Optimization"](https://arxiv.org/abs/2103.10282).
+
+![image](https://user-images.githubusercontent.com/10391785/112060559-a320fe80-8b5d-11eb-9330-82af012f9bad.png)
 
 ## How to run this code
 
@@ -66,3 +68,16 @@ Note the parameters relevant to P-DRO:
 - `--joint`: this indicates that the adversary will model the joint distribution `(x, y)` (instead of just x)
 - `--tau 0.01`: Temperature for the adversary's loss
 - `--norm-k-adv`: This is the size of the window for computing the normalizer in the adversary's loss (`K` in the paper)
+
+## How to cite
+
+If you use this code in your research, or if you want to build upon P-DRO, please consider citing
+
+```
+@inproceedings{michel2021modeling,
+  title={Modeling the Second Player in Distributionally Robust Optimization},
+  author={Michel, Paul and Hashimoto, Tatsunori and Neubig, Graham},
+  booktitle={ICLR 2021},
+  year={2021}
+}
+```

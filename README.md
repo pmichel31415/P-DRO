@@ -14,11 +14,14 @@ pip install -r requirements.txt
 
 Now you should be ready to go. Here is an example run on BiasedSST (see paper for details).
 
-Normally you should first pre-train the MLE of the data distribution (`q_{\psi_0}` in the paper). However, to get you started you can just download our [pre-trained model](TODO_URL).
+Normally you should first pre-train the MLE of the data distribution (`q_{\psi_0}` in the paper). However, to get you started you can just download our [pre-trained model](https://github.com/pmichel31415/P-DRO/releases/download/1.0/biased_SST_95_gen_LM_small_transformer_generative_wikitext103_model.pt).
 
 ```bash
+# Download pre-trained models
 mkdir pretrained_models/
-wget TODO_URL -O pretrained_models
+wget https://github.com/pmichel31415/P-DRO/releases/download/1.0/biased_SST_95_gen_LM_small_transformer_generative_wikitext103_model.pt -P pretrained_models/
+# Create results folder
+mkdir results/
 ```
 
 Now you can run P-DRO on BiasedSST using the following command:
@@ -39,8 +42,8 @@ python pdro_main.py \
     --max-tokens-per-batch 2500 \
     --eval-on-domains biased=True,label=0 biased=True,label=1 biased=False,label=0 biased=False,label=1 \
     --pdro \
-    --adv-architecture small_transformer_generative_wikitext103 \
-    --adv-filename results/biased_SST_95_gen_LM_small_transformer_generative_wikitext103_model.pt \
+    --adv-architecture small_transformer_generative \
+    --adv-filename pretrained_models/biased_SST_95_gen_LM_small_transformer_generative_wikitext103_model.pt \
     --filter-advs-by reverse_kl \
     --adv-threshold 2.302585 \
     --adv-optimizer sgd  \

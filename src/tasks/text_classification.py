@@ -97,7 +97,12 @@ class TextClassificationTask(Task):
         batch = batch.to(h.device)
         y = batch.outputs
         # Extract features with the model
-        features = h[:, 0].view(batch.size, -1)
+        if len(h.size()) > 2:
+            # Handle sequence of vectors
+            features = h[:, 0].view(h.size(0), -1)
+        else:
+            # Or single vectors
+            features = h
         # Log loss
         logits = self.head(features)
         log_probs = F.log_softmax(logits, dim=-1)
@@ -107,14 +112,25 @@ class TextClassificationTask(Task):
     def logits_on_features(self, h, batch):
         batch = batch.to(h.device)
         # Extract features with the model
-        features = h[:, 0].view(h.size(0), -1)
+        if len(h.size()) > 2:
+            # Handle sequence of vectors
+            features = h[:, 0].view(h.size(0), -1)
+        else:
+            # Or single vectors
+            features = h
         # Log loss
         logits = self.head(features)
         return logits
 
     def predict_on_features(self, h):
         """Predict label on this batch"""
-        logits = self.head(h[:, 0].view(h.size(0), -1))
+        if len(h.size()) > 2:
+            # Handle sequence of vectors
+            features = h[:, 0].view(h.size(0), -1)
+        else:
+            # Or single vectors
+            features = h
+        logits = self.head(features)
         log_probs = F.log_softmax(logits, dim=-1)
         return log_probs, logits.argmax(dim=-1)
 
@@ -286,7 +302,7 @@ class MultiNLI(GlueTask):
             model_name,
             tokenizer,
         )
-        self._name = f"mnli"
+        self._name = "mnli"
         if self.suffix is not None:
             self._name = f"{self._name}_{self.suffix}"
 
@@ -350,6 +366,7 @@ class BiasedSST(TextClassificationTask):
         bias_percent=90,
         label=None,
         biased=None,
+        label_noise=0,
         model_name="bert-base-uncased",
         tokenizer=None,
     ):
@@ -357,10 +374,13 @@ class BiasedSST(TextClassificationTask):
         self.orig_data_dir = os.path.join(path, "glue_data", "SST-2")
         self.label = label
         self.biased = biased
+        self.label_noise = label_noise
+        name = f"SST-2-biased-{self.bias_percent}"
+        if self.label_noise > 0:
+            name = f"{name}-noisy-{self.label_noise:.2f}"
         # Call constructor
         super(BiasedSST, self).__init__(
-            os.path.join(path, "glue_data",
-                         f"SST-2-biased-{self.bias_percent}"),
+            os.path.join(path, "glue_data", name),
             "SST-2-biased",
             glue_processors["sst-2"](),
             max_seq_length=max_seq_length,
@@ -390,6 +410,7 @@ class BiasedSST(TextClassificationTask):
             self.orig_data_dir,
             percent_biased=self.bias_percent,
             save_dir=self.path,
+            label_noise=self.label_noise,
         )
         # Number of biased samples
         print(len([x for x in test if x.biased]))

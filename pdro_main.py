@@ -16,7 +16,7 @@ from typing import Optional, Tuple
 from src.data.language_modeling import to_lm_batch
 from src.optim import get_optimizer, get_lr_scheduler
 from src.utils import cacheable, get_loader, get_group_dro_loader
-from src.tasks import LanguageModelingTask, CCLanguageModelingTask
+from src.tasks import LanguageModelingTask, CCLanguageModelingTask, Task
 from src.configuration import Experiment, ArgumentGroup
 from src.running_average import get_log_running_average, LogRunningAverage
 from src.stopping import (
@@ -26,6 +26,7 @@ from src.stopping import (
 )
 from src.logging import NpzLogger
 
+import non_param_dro
 import pdro_args
 from pdro_compare_models import filter_valid_advs
 
@@ -170,29 +171,35 @@ def compute_model_loss(
     """
     # Compute the log ratio
     if adv_args.non_param:
-        # Non-parametric adversary
-        if adv_args.kappa is not None:
+        # Non-parametric adversaries
+        if adv_args.chi2_eta is not None:
+            q_star = non_param_dro.Chi2ConstrainedAdversary(
+                adv_args.chi2_eta).best_response(losses)
+        elif adv_args.cvar_alpha is not None:
+            q_star = non_param_dro.CVaRConstrainedAdversary(
+                adv_args.cvar_alpha).best_response(losses)
+        elif adv_args.kappa is not None:
             # If the KL bound is fixed, we find the temperature which
             # satisfies it
-            tau_star = find_tau_star(
-                losses.detach().cpu().numpy(),
-                adv_args.kappa,
-            )
+            q_star = non_param_dro.KLConstrainedAdversary(
+                adv_args.kappa).best_response(losses)
         else:
             # Otherwise just use a fixed temperature
             tau_star = adv_args.tau
-        # Un-normalized q_star
-        log_q_star_ = losses/tau_star
-        # log normalize
-        # Note that the log normalizer is
-        # E_z~p e^{l(z)/\tau} which we approximate with the empirical average
-        # of e^{l/\tau} over the minibatch
-        log_Z = th.logsumexp(log_q_star_ - np.log(len(losses)), dim=0)
-        log_q_star = log_q_star_ - log_Z
-        # Weights for the loss function
-        # Notice that we don't detach tthe weights: we will backprop
-        # through q_\tau,\theta too
-        model_loss = (th.exp(log_q_star)*losses).mean()
+            # Un-normalized q_star
+            log_q_star_ = losses/tau_star
+            # log normalize
+            # Note that the log normalizer is
+            # E_z~p e^{l(z)/\tau} which we approximate with the empirical
+            # average of e^{l/\tau} over the minibatch
+            log_Z = th.logsumexp(log_q_star_ - np.log(len(losses)), dim=0)
+            log_q_star = log_q_star_ - log_Z
+            # Weights for the loss function
+            # Notice that we don't detach tthe weights: we will backprop
+            # through q_\tau,\theta too
+            q_star = th.exp(log_q_star)
+        # Compute the model loss
+        model_loss = (q_star*losses).sum()
     else:
         log_ratios = log_q-log_p
         # Renormalize weights
@@ -254,11 +261,11 @@ def compute_adv_loss(
         log_weights = (log_q - log_p) - log_Z_model.value
         # weights
         weights = th.exp(log_weights)
-        # "Entropy" component
-        ent_loss = (weights*log_weights).mean()
+        # "KL penalty" component
+        kl_loss = (weights*log_weights).mean()
         # "zero sum" component
         zero_sum_loss = (-weights*losses.detach()).mean()
-        adv_loss = zero_sum_loss + adv_args.tau*ent_loss
+        adv_loss = zero_sum_loss + adv_args.tau*kl_loss
     elif adv_args.adv_obj == "log_zero_sum":
         # LM NLL in log space:
         log_losses = log_q - log_p + th.log(losses).detach()
@@ -296,22 +303,22 @@ def compute_adv_loss(
 
 
 def train(
-    model,
-    adv,
-    task,
-    model_args,
-    adv_args,
-    optim_args,
-    dro_args,
-    train_log_interval=1,
+    model: th.nn.Module,
+    adv: th.nn.Module,
+    task: Task,
+    model_args: ArgumentGroup,
+    adv_args: ArgumentGroup,
+    optim_args: ArgumentGroup,
+    dro_args: ArgumentGroup,
+    train_log_interval: int = 1,
     device="cuda:0",
-    exp_name="",
-    figure_prefix="precisions",
-    results_prefix="results/",
+    exp_name: str = "",
+    figure_prefix: str = "precisions",
+    results_prefix: str = "results/",
     eval_domain_filters=None,
     train_domain_filters=None,
     valid_pseudo_domain_filters=None,
-    save_name="",
+    save_name: str = "",
 ):
     # LM task
     if adv_args.ratio_model:
@@ -628,21 +635,36 @@ def train(
                     # For non-parametric adversary, we compute the adversarial
                     # weights directly with the loss
                     if adv_args.non_param:
-                        if adv_args.kappa is not None:
-                            # Either infer temperature based on fixed KL bound
-                            tau_star = find_tau_star(
-                                dev_losses,
-                                adv_args.kappa,
-                            )
+
+                        # Non-parametric adversaries
+                        if adv_args.chi2_eta is not None:
+                            valid_adv = non_param_dro.Chi2ConstrainedAdversary(
+                                adv_args.chi2_eta)
+                            dev_q = valid_adv.best_response(
+                                th.Tensor(dev_losses)).numpy()
+                        elif adv_args.cvar_alpha is not None:
+                            valid_adv = non_param_dro.CVaRConstrainedAdversary(
+                                adv_args.cvar_alpha)
+                            dev_q = valid_adv.best_response(
+                                th.Tensor(dev_losses)).numpy()
+                        elif adv_args.kappa is not None:
+                            # If the KL bound is fixed, we find the
+                            # temperature which satisfies it
+                            valid_adv = non_param_dro.KLConstrainedAdversary(
+                                adv_args.kappa)
+                            dev_q = valid_adv.best_response(
+                                th.Tensor(dev_losses)).numpy()
                         else:
                             # Or use
                             tau_star = adv_args.tau
-                        dev_log_q = dev_losses/tau_star
-                        # For stability for log sum exp
-                        dev_log_q -= dev_log_q.max()
-                        # Log normalize
-                        dev_log_q -= np.log(np.sum(np.exp(dev_log_q)))
-                        dev_log_q += np.log(len(dev_log_q))
+                            dev_log_q = dev_losses/tau_star
+                            # For stability for log sum exp
+                            dev_log_q -= dev_log_q.max()
+                            # Log normalize
+                            dev_log_q -= np.log(np.sum(np.exp(dev_log_q)))
+                            dev_q = np.exp(dev_log_q)
+                        dev_log_q = np.log(dev_q+1e-40) + \
+                            np.log(len(dev_log_q))
                     else:
                         # Compute weights with adversary
                         dev_log_q = compute_dataset_log_probs(
@@ -753,11 +775,16 @@ def get_args():
     general_args.add_argument("--data-dir", type=str, default="datasets")
     general_args.add_argument("--test-only", action="store_true",
                               help="Just test")
+    general_args.add_argument("--results-folder", type=str, default="results/",
+                              help="Folder in which to save results")
     general_args.add_argument("--test-on-split", type=str, default="test",
                               help="Which split should we test on")
     general_args.add_argument("--train-log-interval", type=int, default=1)
     general_args.add_argument("--eval-on-domains", type=str, default=None,
                               nargs="*")
+    general_args.add_argument("--eval-on-canonical-domains",
+                              action="store_true",
+                              help="Use the canonical subdomain splits")
     general_args.add_argument("--task", default="biased_SST_95",
                               include_in_name=True,
                               choices=list(task_list.keys()),)
@@ -905,7 +932,7 @@ def main():
         ratio_model=adv_args.ratio_model,
     )
     # Pre-compute baseline LM scores
-    if adv_args.ratio_model:
+    if not adv_args.pdro or adv_args.ratio_model or adv_args.non_param:
         # This is a hack: the "baseline" log probilities are not used in
         # this scenario
         all_log_probs = th.zeros(len(task.train_data))
@@ -917,7 +944,7 @@ def main():
         else:
             adv_filename = adv_args.adv_architecture
         all_log_probs_filename = os.path.join(
-            "results",
+            general_args.results_folder,
             f"lm_{adv_filename}{adv_type}_train",
         )
         # Pre-compute the log probabilities of the training samples
@@ -947,6 +974,9 @@ def main():
     # takes a sample and returns True if the sample is in domain, False
     # otherwise
     eval_domain_filters = None
+    # Evaluate on canonical domains
+    if general_args.eval_on_canonical_domains:
+        general_args.eval_on_domains = task.canonical_domain_descriptors
     if general_args.eval_on_domains is not None:
 
         eval_domain_filters = {domain: parse_domain(domain)
@@ -956,37 +986,35 @@ def main():
     # samples
     train_domain_filters = None
     valid_pseudo_domain_filters = None
-    if dro_args.group_dro:
-        if dro_args.group_specifications is not None:
-            # In this case, the groups are directly defined by the sample's
-            # attributes
-            train_domain_filters = {
-                domain: parse_domain(domain)
-                for domain in dro_args.group_specifications
-            }
-        elif dro_args.train_group_file is not None:
-            # This is when the groups are defined by a file containing the
-            # domain label of each sample
-            train_group_labels = np.load(dro_args.train_group_file)
-            valid_group_labels = np.load(dro_args.dev_group_file)
-            # Groups on the training data
-            groups = list(set(train_group_labels))
-            train_idxs = np.arange(len(task.train_data))
-            train_domain_filters = {
-                str(group): train_idxs[train_group_labels == group]
-                for group in groups
-            }
-            valid_idxs = np.arange(len(task.valid_data))
-            valid_pseudo_domain_filters = {
-                str(group): valid_idxs[valid_group_labels == group]
-                for group in groups
-            }
-
-        elif dro_args.gold_groups:
-            # This is when we are using the same domains as the evaluation
-            # domains
-            train_domain_filters = {k: v for k,
-                                    v in eval_domain_filters.items()}
+    if dro_args.group_specifications is not None:
+        # In this case, the groups are directly defined by the sample's
+        # attributes
+        train_domain_filters = {
+            domain: parse_domain(domain)
+            for domain in dro_args.group_specifications
+        }
+    elif dro_args.train_group_file is not None:
+        # This is when the groups are defined by a file containing the
+        # domain label of each sample
+        train_group_labels = np.load(dro_args.train_group_file)
+        valid_group_labels = np.load(dro_args.dev_group_file)
+        # Groups on the training data
+        groups = list(set(train_group_labels))
+        train_idxs = np.arange(len(task.train_data))
+        train_domain_filters = {
+            str(group): train_idxs[train_group_labels == group]
+            for group in groups
+        }
+        valid_idxs = np.arange(len(task.valid_data))
+        valid_pseudo_domain_filters = {
+            str(group): valid_idxs[valid_group_labels == group]
+            for group in groups
+        }
+    elif dro_args.gold_groups:
+        # This is when we are using the same domains as the evaluation
+        # domains
+        train_domain_filters = {k: v for k,
+                                v in eval_domain_filters.items()}
     # Name of the file for saving
     if general_args.force_save_name is not None:
         save_name = general_args.force_save_name
@@ -1048,7 +1076,7 @@ def main():
                 exp_name=run_exp_name,
                 save_name=run_save_name,
                 figure_prefix="precisions",
-                results_prefix="results/",
+                results_prefix=general_args.results_folder,
                 eval_domain_filters=eval_domain_filters,
                 train_domain_filters=train_domain_filters,
                 valid_pseudo_domain_filters=valid_pseudo_domain_filters,
@@ -1064,7 +1092,8 @@ def main():
             save_file = f"{run_save_name}_{stopping_strategy}_model.pt"
             if stopping_strategy == "erm":
                 save_file = f"{run_save_name}_model.pt"
-            best_model_state_dict = th.load(os.path.join("results", save_file))
+            best_model_state_dict = th.load(os.path.join(
+                general_args.results_folder, save_file))
             model.load_state_dict(best_model_state_dict)
             # Evaluate on general domain
             score = task.eval_model(model, data=test_split)
@@ -1080,7 +1109,7 @@ def main():
             y = np.asarray(split_data.get_labels())
             results_file = f"{run_save_name}_{test_split}_results_{stopping_strategy}.npz"  # noqa
             np.savez_compressed(
-                os.path.join("results", results_file),
+                os.path.join(general_args.results_folder, results_file),
                 exp_name=exp_name,
                 log_p=log_p.numpy(),
                 y_hat=y_hat.numpy(),

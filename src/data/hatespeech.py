@@ -5,7 +5,6 @@ https://github.com/huggingface/pytorch-pretrained-BERT
 Classes to load Hatespeech datasets
 """
 import os
-
 from transformers import DataProcessor
 
 from .text_dataset import ClassificationExample

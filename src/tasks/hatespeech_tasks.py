@@ -24,6 +24,14 @@ class FountaTask(TextClassificationTask):
             tokenizer=tokenizer,
         )
 
+    @property
+    def canonical_domain_descriptors(self):
+        return [
+            f"dialect={dialect},label={label}"
+            for label in [0, 1, 2, 3]
+            for dialect in ['white', 'aav', 'hispanic', 'other']
+        ]
+
 
 class DavidsonTask(TextClassificationTask):
     """Toxicity classification task from Davidson et al. 2018"""

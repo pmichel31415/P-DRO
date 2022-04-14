@@ -1,6 +1,6 @@
 # Parametric Distributionally Robust Optimization
 
-This repository contains code for implementing experiments in the ICLR 2021 paper ["Modeling the Second Player in Distributionally Robust Optimization"](https://arxiv.org/abs/2103.10282).
+This repository contains code for implementing distributionally robust optimization with parametric uncertainty sets. This codebase was used to implement experiments in the ICLR 2021 paper ["Modeling the Second Player in Distributionally Robust Optimization"](https://arxiv.org/abs/2103.10282) and subsequent ICLR 2022 follow-up ["Distributionally Robust Models with Parametric Likelihood Ratios"](http://arxiv.org/abs/2204.06340).
 
 ![image](https://user-images.githubusercontent.com/10391785/112060559-a320fe80-8b5d-11eb-9330-82af012f9bad.png)
 
@@ -56,6 +56,7 @@ python pdro_main.py \
     --norm-k-adv 5
 ```
 
+
 Note the parameters relevant to P-DRO:
 
 - `--pdro`: use P-DRO (deactivate this for ERM)
@@ -69,9 +70,54 @@ Note the parameters relevant to P-DRO:
 - `--tau 0.01`: Temperature for the adversary's loss
 - `--norm-k-adv`: This is the size of the window for computing the normalizer in the adversary's loss (`K` in the paper)
 
+
+## RP-DRO
+
+You can run training for a parametric likelihood ratio model (as described in [Michel et al., 2022](http://arxiv.org/abs/2204.06340)).
+
+```bash
+python pdro_main.py \
+    --pdro \
+    --ratio-model \
+    --adv-architecture bilstm \
+    --filter-advs-by reverse_kl \
+    --adv-threshold 2.302585 \
+    --adv-obj fwd_kl \
+    --joint \
+    --adv-valid-on-acc \
+    --adv-optimizer adamw \
+    --n-reruns 1 \
+    --task biased_SST_95 \
+    --architecture bilstm \
+    --input-format bert-base-uncased \
+    --lr-scheduler linear_decay \
+    --n-epochs 50 \
+    --valid-interval epoch \
+    --optimizer adamw \
+    --lr 2e-5 \
+    --batch-size 64 \
+    --max-tokens-per-batch 2500 \
+    --eval-on-domains biased=True,label=0 biased=True,label=1 biased=False,label=0 biased=False,label=1 \
+    --self-norm-lambda 0 \
+    --renorm-ratios \
+    --adv-lr 2e-5 \
+    --tau 0.01
+```
+
+The additional relevant parameters here are:
+
+- `--ratio-model`: Use the ratio-based version of P-DRO, RP-DRO
+- `--renorm-ratios`: Batch-level renormalization of the ratios
+- `--self-norm-lambda 0`: No self-normalization penalty. To enable self-normalization, set this to a positive value and disable `--renorm-ratios`
+- `--adv-obj fwd_kl`: This specifies that the objective for the adversary will be the reverse of the model objective, with a forward KL penalty (see e.g. Equation 9 in the paper)
+- `--tau 0.01`: Temperature for the adversary's loss
+
+
 ## How to cite
 
 If you use this code in your research, or if you want to build upon P-DRO, please consider citing
+
+### The original P-DRO paper:
 
 ```
 @inproceedings{michel2021modeling,
@@ -79,5 +125,16 @@ If you use this code in your research, or if you want to build upon P-DRO, pleas
   author={Michel, Paul and Hashimoto, Tatsunori and Neubig, Graham},
   booktitle={ICLR 2021},
   year={2021}
+}
+```
+
+### The RP-DRO followup paper:
+
+```
+@inproceedings{michel2021modeling,
+  title={Distributionally Robust Models with Parametric Likelihood Ratios},
+  author={Michel, Paul and Hashimoto, Tatsunori and Neubig, Graham},
+  booktitle={ICLR 2022},
+  year={2022}
 }
 ```

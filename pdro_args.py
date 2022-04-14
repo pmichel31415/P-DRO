@@ -54,6 +54,9 @@ def add_adversary_args(experiment):
                           include_in_name="pdro")
     adv_args.add_argument("--tau", type=float, default=1.0,
                           include_in_name="pdro", help="Temperature")
+    adv_args.add_argument("--cvar-constraint", action="store_true",
+                          include_in_name="pdro",
+                          help="Use a cvar constraint rather than KL")
     adv_args.add_argument("--adv-on-acc", action="store_true",
                           help="Train adversary to maximize error "
                           "rate (not loss)",
@@ -76,6 +79,10 @@ def add_adversary_args(experiment):
     adv_args.add_argument("--non-param", action="store_true",
                           include_in_name="pdro")
     adv_args.add_argument("--kappa", type=float, default=None,
+                          include_in_name="non_param")
+    adv_args.add_argument("--chi2-eta", type=float, default=None,
+                          include_in_name="non_param")
+    adv_args.add_argument("--cvar-alpha", type=float, default=None,
                           include_in_name="non_param")
     adv_args.add_argument("--clip-grad-adv", type=float, default=None,
                           include_in_name="pdro")

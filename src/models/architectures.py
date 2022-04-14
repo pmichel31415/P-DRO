@@ -4,7 +4,7 @@ from .resnet import ResNetS
 from .pretrained_resnet import make_headless_resnet18, make_headless_resnet50
 from .bilstm import BiLSTMEncoder
 from .lstm import LSTMLM, LSTMGenerative
-from .bert import BERT
+from .bert import BERT, DistilBERT
 from .gpt2 import GPT2, small_transformer
 from .bow import BoNgramLM, BOWGenerative
 import torch as th
@@ -147,6 +147,14 @@ def medium_bilstm(input_shape, output_size):
 def bert_base_uncased(input_shape, output_size):
     return BERT.from_pretrained(
         "bert-base-uncased",
+        cache_dir=_PRETRAINED_MODELS_PATH
+    )
+
+
+@register_architecture(alt_name="distilbert-base-uncased")
+def distilbert_base_uncased(input_shape, output_size):
+    return DistilBERT.from_pretrained(
+        "distilbert-base-uncased",
         cache_dir=_PRETRAINED_MODELS_PATH
     )
 

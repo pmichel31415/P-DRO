@@ -103,6 +103,14 @@ def filter_valid_advs(
     return adv_scores <= adv_threshold
 
 
+def check_idxs_coverage(group_idxs, dataset_size):
+    all_idxs_in_groups = set()
+    for idxs in group_idxs.values():
+        all_idxs_in_groups.update(set(idxs))
+    all_idxs_in_groups = np.asarray(sorted(all_idxs_in_groups))
+    np.testing.assert_allclose(all_idxs_in_groups, np.arange(dataset_size))
+
+
 def select_model(
     save_names,
     filter_advs_by="none",
@@ -202,7 +210,11 @@ def select_model(
             domain_errors = 1-domain_accs
         else:
             # Use custom domains
-            assert sum(map(len, group_idxs.values())) == errors.shape[-1]
+            try:
+                check_idxs_coverage(group_idxs, errors.shape[-1])
+            except AssertionError as e:
+                print("Warning, group_idxs don't cover the entire dataset:")
+                print(e)
             domain_errors = np.stack(
                 [errors[:, idxs].mean(-1) for idxs in group_idxs.values()],
                 axis=-1,

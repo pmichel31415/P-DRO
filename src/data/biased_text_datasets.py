@@ -66,6 +66,7 @@ def make_biased_sst(
     seed=8345364,
     save_dir=None,
     overwrite=False,
+    label_noise=0,
 ):
     """Make a biased version of SST
 
@@ -113,6 +114,15 @@ def make_biased_sst(
     # Bias the test set equally
     bias_dataset(data["test_withref"], rng, "0", 50, bias_string)
     bias_dataset(data["test_withref"], rng, "1", 50, bias_string)
+    # Add label noise to training data if needed
+    if label_noise > 0:
+        all_labels = set(sst_processor.get_labels())
+        for idx in range(len(data["train"])):
+            if rng.rand() < label_noise:
+                # Flip label
+                current_label = data["train"][idx].label
+                new_label = rng.choice(list(all_labels - {current_label}))
+                data["train"][idx].label = new_label
     # Maybe save
     if save_dir is not None:
         if not os.path.isdir(save_dir):

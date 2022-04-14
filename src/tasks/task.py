@@ -330,6 +330,10 @@ class Task(nn.Module):
                 f"/'test/'train', got {split} instead"
             )
 
+    @property
+    def canonical_domain_descriptors(self):
+        return []
+
 
 def concatenate_tasks(
     tasks,

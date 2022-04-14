@@ -34,6 +34,7 @@ from .language_modeling import (
 from .image_density_estimation import ImageDensityEstimationTask
 from . import language_modeling
 from .task_suites import suites, prepare_task_suite
+from .task import Task
 
 task_list = {}
 
@@ -292,7 +293,7 @@ def SST_imbalanced(path="./datasets", model_name=None):
 
 @register_task(can_be_lm=True, can_be_class_conditional_lm=True)
 def biased_SST(path="./datasets", model_name=None):
-    """100 classes of MiniImageNet split into 20 5-way classification tasks"""
+    """Biased version of SST"""
     # Make the biased version of SST
     task = BiasedSST(path, model_name=model_name)
     return task, task.tokenizer.vocab_size, task.n_classes
@@ -300,9 +301,54 @@ def biased_SST(path="./datasets", model_name=None):
 
 @register_task(can_be_lm=True, can_be_class_conditional_lm=True)
 def biased_SST_95(path="./datasets", model_name=None):
-    """100 classes of MiniImageNet split into 20 5-way classification tasks"""
+    """Biased version of SST"""
     # Make the biased version of SST
     task = BiasedSST(path, model_name=model_name, bias_percent=95)
+    return task, task.tokenizer.vocab_size, task.n_classes
+
+
+@register_task(can_be_lm=True, can_be_class_conditional_lm=True)
+def biased_SST_95_noisy(path="./datasets", model_name=None):
+    """Biased version of SST"""
+    # Make the biased version of SST
+    task = BiasedSST(path, model_name=model_name,
+                     bias_percent=95, label_noise=0.1)
+    return task, task.tokenizer.vocab_size, task.n_classes
+
+
+@register_task(can_be_lm=True, can_be_class_conditional_lm=True)
+def biased_SST_95_very_noisy(path="./datasets", model_name=None):
+    """Biased version of SST"""
+    # Make the biased version of SST
+    task = BiasedSST(path, model_name=model_name,
+                     bias_percent=95, label_noise=0.2)
+    return task, task.tokenizer.vocab_size, task.n_classes
+
+
+@register_task(can_be_lm=True, can_be_class_conditional_lm=True)
+def biased_SST_95_very_very_noisy(path="./datasets", model_name=None):
+    """Biased version of SST"""
+    # Make the biased version of SST
+    task = BiasedSST(path, model_name=model_name,
+                     bias_percent=95, label_noise=0.3)
+    return task, task.tokenizer.vocab_size, task.n_classes
+
+
+@register_task(can_be_lm=True, can_be_class_conditional_lm=True)
+def biased_SST_95_very_noisy_40(path="./datasets", model_name=None):
+    """Biased version of SST"""
+    # Make the biased version of SST
+    task = BiasedSST(path, model_name=model_name,
+                     bias_percent=95, label_noise=0.4)
+    return task, task.tokenizer.vocab_size, task.n_classes
+
+
+@register_task(can_be_lm=True, can_be_class_conditional_lm=True)
+def biased_SST_95_very_noisy_50(path="./datasets", model_name=None):
+    """Biased version of SST"""
+    # Make the biased version of SST
+    task = BiasedSST(path, model_name=model_name,
+                     bias_percent=95, label_noise=0.5)
     return task, task.tokenizer.vocab_size, task.n_classes
 
 
@@ -349,6 +395,7 @@ __all__ = [
     "SplitMiniImageNet",
     "SplitCUB",
     "Omniglot",
+    "Task",
     # "SST",
     "GlueTask",
     "SuperGlueTask",

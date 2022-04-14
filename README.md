@@ -14,6 +14,12 @@ source env/bin/activate
 pip install -r requirements.txt
 ```
 
+Alternatively, you can install the dedicated conda environment:
+
+```bash
+conda env create -f rp_dro.yml
+```
+
 Now you should be ready to go. Here is an example run on BiasedSST (see paper for details).
 
 Normally you should first pre-train the MLE of the data distribution (`q_{\psi_0}` in the paper). However, to get you started you can just download our [pre-trained model](https://github.com/pmichel31415/P-DRO/releases/download/1.0/biased_SST_95_gen_LM_small_transformer_generative_wikitext103_model.pt).

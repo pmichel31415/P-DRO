@@ -73,7 +73,7 @@ Note the parameters relevant to P-DRO:
 
 ## RP-DRO
 
-You can run training for a parametric likelihood ratio model (as described in [Michel et al., 2022](http://arxiv.org/abs/2204.06340)).
+You can run training for a parametric likelihood ratio model (RP-DRO, as described in [Michel et al., 2022](http://arxiv.org/abs/2204.06340)).
 
 ```bash
 python pdro_main.py \

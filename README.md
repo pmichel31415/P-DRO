@@ -79,6 +79,9 @@ Note the parameters relevant to P-DRO:
 
 ## RP-DRO
 
+![image](https://user-images.githubusercontent.com/10391785/163356611-3143da35-abdf-44d5-8989-066d9f8ca72e.png)
+
+
 You can run training for a parametric likelihood ratio model (RP-DRO, as described in [Michel et al., 2022](http://arxiv.org/abs/2204.06340)).
 
 ```bash
@@ -116,7 +119,7 @@ The additional relevant parameters here are:
 - `--renorm-ratios`: Batch-level renormalization of the ratios
 - `--self-norm-lambda 0`: No self-normalization penalty. To enable self-normalization, set this to a positive value and disable `--renorm-ratios`
 - `--adv-obj fwd_kl`: This specifies that the objective for the adversary will be the reverse of the model objective, with a forward KL penalty (see e.g. Equation 9 in the paper)
-- `--tau 0.01`: Temperature for the adversary's loss
+- `--tau 0.01`: Here this refers to the KL penalty weight
 
 
 ## How to cite
